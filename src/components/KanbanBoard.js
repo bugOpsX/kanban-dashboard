@@ -87,14 +87,24 @@ const KanbanBoard = ({ selectedCategory, userId }) => {
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
-    
+
     if (!over || active.id === over.id) {
       return;
     }
 
     const taskId = active.id;
-    const newStatus = over.id;
-    
+    let newStatus = over.id;
+
+    const validStatuses = ['todo', 'inProgress', 'done'];
+    if (!validStatuses.includes(newStatus)) {
+      const overTask = tasks.find(t => t.id === over.id);
+      if (overTask) {
+        newStatus = overTask.status;
+      } else {
+        return; // Unable to determine target status
+      }
+    }
+
     try {
       const taskRef = doc(db, 'tasks', taskId);
       await updateDoc(taskRef, {
@@ -111,9 +121,9 @@ const KanbanBoard = ({ selectedCategory, userId }) => {
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <TaskNotifications tasks={tasks} />
       {/* Task Bar */}
-      <Paper 
+      <Paper
         elevation={0}
-        sx={{ 
+        sx={{
           bgcolor: isDark ? '#1E1E1E' : '#f5f5f5',
           p: 2,
           mb: 2,
@@ -136,10 +146,10 @@ const KanbanBoard = ({ selectedCategory, userId }) => {
           <Typography variant="body2" sx={{ color: isDark ? '#888' : '#666' }}>
             Collaborators:
           </Typography>
-          <AvatarGroup max={4} sx={{ 
-            '& .MuiAvatar-root': { 
-              width: 30, 
-              height: 30, 
+          <AvatarGroup max={4} sx={{
+            '& .MuiAvatar-root': {
+              width: 30,
+              height: 30,
               fontSize: '0.875rem',
               bgcolor: '#333',
               color: '#fff'
@@ -147,7 +157,7 @@ const KanbanBoard = ({ selectedCategory, userId }) => {
           }}>
             {collaborators.map((email, index) => (
               <Avatar key={index}>
-                {email[0].toUpperCase()}
+                {email && email[0] ? email[0].toUpperCase() : 'U'}
               </Avatar>
             ))}
           </AvatarGroup>
@@ -166,8 +176,8 @@ const KanbanBoard = ({ selectedCategory, userId }) => {
           minHeight: 'calc(100vh - 180px)', // Adjusted for task bar
         }}
       >
-        <DndContext 
-          sensors={sensors} 
+        <DndContext
+          sensors={sensors}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
@@ -190,13 +200,13 @@ const KanbanBoard = ({ selectedCategory, userId }) => {
                   alignItems: 'center',
                   p: 2,
                   borderBottom: '1px solid',
-                  borderColor: status === 'todo' ? '#0088ff' : 
-                             status === 'inProgress' ? '#FFA500' : '#00C853',
+                  borderColor: status === 'todo' ? '#0088ff' :
+                    status === 'inProgress' ? '#FFA500' : '#00C853',
                 }}
               >
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
+                <Typography
+                  variant="h6"
+                  sx={{
                     color: isDark ? '#fff' : '#000',
                     fontSize: '1rem',
                     fontWeight: 500,
@@ -211,7 +221,7 @@ const KanbanBoard = ({ selectedCategory, userId }) => {
                     setSelectedColumn(status);
                     setOpenTaskDialog(true);
                   }}
-                  sx={{ 
+                  sx={{
                     color: isDark ? '#fff' : '#000',
                     p: 0,
                   }}
@@ -251,7 +261,7 @@ const KanbanBoard = ({ selectedCategory, userId }) => {
                   width: '300px',
                 }}
               >
-                <TaskCard 
+                <TaskCard
                   task={activeTask}
                   isDragging={true}
                 />

@@ -31,11 +31,11 @@ import {
   Delete as DeleteIcon,
   Send as SendIcon,
 } from '@mui/icons-material';
-import { 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  collection, 
+import {
+  doc,
+  addDoc,
+  updateDoc,
+  collection,
   query,
   where,
   serverTimestamp,
@@ -89,18 +89,18 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
   useEffect(() => {
     if (task) {
       // Convert old tag format to new format if necessary
-      const convertedTags = Array.isArray(task.tags) 
+      const convertedTags = Array.isArray(task.tags)
         ? task.tags.map(tag => {
-            // If tag is already in the new format
-            if (typeof tag === 'object' && tag.text && tag.color) {
-              return tag;
-            }
-            // If tag is in the old format (string)
-            return {
-              text: tag,
-              color: 'blue' // default color
-            };
-          })
+          // If tag is already in the new format
+          if (typeof tag === 'object' && tag.text && tag.color) {
+            return tag;
+          }
+          // If tag is in the old format (string)
+          return {
+            text: tag,
+            color: 'blue' // default color
+          };
+        })
         : [];
 
       setFormData({
@@ -159,7 +159,7 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
       if (categoryId) {
         const categoryDocRef = doc(db, 'categories', categoryId);
         const categorySnapshot = await getDoc(categoryDocRef);
-        
+
         if (categorySnapshot.exists()) {
           const sharedWith = categorySnapshot.data()?.sharedWith || [];
           if (sharedWith.length > 0) {
@@ -185,7 +185,7 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
     if (!task || !open) return;
 
     const presenceRef = doc(db, 'tasks', task.id, 'editors', userId);
-    
+
     // Mark user as editing
     const markEditing = async () => {
       await setDoc(presenceRef, {
@@ -252,7 +252,7 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
       text: tagInput.trim(),
       color: selectedColor
     };
-    
+
     if (newTag.text && !formData.tags.some(tag => tag.text === newTag.text)) {
       setFormData(prev => ({
         ...prev,
@@ -324,21 +324,25 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setFormData(prev => ({ ...prev, loading: true }));
+
     const taskData = {
       title: formData.title,
-      description: formData.description,
-      priority: formData.priority,
-      status: columnId || formData.status,
-      assignee: formData.assignee,
-      deadline: formData.deadline,
-      tags: formData.tags,
-      categoryId,
-      progress: formData.progress,
-      lastModifiedBy: userId,
-      lastModifiedByEmail: auth.currentUser?.email,
+      description: formData.description || '',
+      priority: formData.priority || 'medium',
+      status: columnId || formData.status || 'todo',
+      assignee: formData.assignee || null,
+      deadline: formData.deadline || null,
+      tags: formData.tags || [],
+      categoryId: categoryId || 'unassigned',
+      progress: formData.progress || 0,
+      lastModifiedBy: userId || 'Unknown',
+      lastModifiedByEmail: auth.currentUser?.email || 'Unknown',
       lastModifiedAt: serverTimestamp(),
     };
+
+    setFormData(initialState);
+    onClose();
 
     try {
       if (task) {
@@ -346,18 +350,14 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
       } else {
         await addDoc(collection(db, 'tasks'), {
           ...taskData,
-          createdBy: userId,
-          createdByEmail: auth.currentUser?.email,
+          createdBy: userId || 'Unknown',
+          createdByEmail: auth.currentUser?.email || 'Unknown',
           createdAt: serverTimestamp(),
         });
       }
-      setFormData(initialState);
-      onClose();
     } catch (error) {
       console.error('Error saving task:', error);
       alert('Failed to save task: ' + error.message);
-    } finally {
-      setFormData(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -367,8 +367,8 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
   };
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
@@ -381,24 +381,24 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
     >
       <form onSubmit={handleSubmit}>
         <DialogTitle>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center' 
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
             <Typography variant="h6">
               {task ? 'Edit Task' : 'New Task'}
             </Typography>
             {formData.loading && (
-              <LinearProgress 
-                sx={{ 
+              <LinearProgress
+                sx={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
                   right: 0,
                   borderTopLeftRadius: 8,
                   borderTopRightRadius: 8,
-                }} 
+                }}
               />
             )}
           </Box>
@@ -413,7 +413,7 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
                     key={editor}
                     size="small"
                     label={editor}
-                    avatar={<Avatar>{editor[0].toUpperCase()}</Avatar>}
+                    avatar={<Avatar>{editor && editor[0] ? editor[0].toUpperCase() : 'U'}</Avatar>}
                     sx={{ ml: 1 }}
                   />
                 )
@@ -436,7 +436,7 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
               helperText={formData.title.trim().length === 0 ? "Title is required" : ""}
               disabled={formData.loading}
             />
-            
+
             <TextField
               label="Description"
               fullWidth
@@ -490,7 +490,7 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
                     key={tag.text}
                     label={tag.text}
                     onDelete={() => handleRemoveTag(tag)}
-                    sx={{ 
+                    sx={{
                       bgcolor: getTagColor(tag),
                       color: 'white'
                     }}
@@ -527,7 +527,7 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
                     </Select>
                   </FormControl>
                 </Box>
-                <Button 
+                <Button
                   onClick={handleAddTag}
                   variant="outlined"
                   disabled={!tagInput.trim()}
@@ -604,7 +604,7 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                     <Avatar sx={{ width: 24, height: 24 }}>
-                      {comment.createdBy[0]}
+                      {comment.createdBy && comment.createdBy[0] ? comment.createdBy[0].toUpperCase() : 'U'}
                     </Avatar>
                     <Typography variant="caption" color="text.secondary">
                       {comment.createdBy}
@@ -659,7 +659,7 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
                       key={option.email}
                       label={option.email}
                       {...getTagProps({ index })}
-                      avatar={<Avatar>{option.email[0]}</Avatar>}
+                      avatar={<Avatar>{option.email && option.email[0] ? option.email[0].toUpperCase() : 'U'}</Avatar>}
                     />
                   ))
                 }
@@ -687,11 +687,11 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
               getOptionLabel={(option) => option?.email || ''}
               renderOption={(props, option) => (
                 <Box component="li" {...props}>
-                  <Avatar 
+                  <Avatar
                     sx={{ width: 24, height: 24, mr: 1 }}
                     alt={option.email}
                   >
-                    {option.email[0].toUpperCase()}
+                    {option.email && option.email[0] ? option.email[0].toUpperCase() : 'U'}
                   </Avatar>
                   {option.email}
                 </Box>
@@ -720,13 +720,13 @@ const TaskDialog = ({ open, onClose, task, columnId, categoryId, userId }) => {
         </DialogContent>
 
         <DialogActions sx={{ p: 2, pt: 0 }}>
-          <Button 
+          <Button
             onClick={handleClose}
             disabled={formData.loading}
           >
             Cancel
           </Button>
-          <Button 
+          <Button
             type="submit"
             variant="contained"
             disabled={!isFormValid()}

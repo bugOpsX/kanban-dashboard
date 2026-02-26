@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ThemeProvider, 
-  createTheme, 
-  CssBaseline, 
-  Box, 
-  CircularProgress, 
-  alpha 
+import {
+  ThemeProvider,
+  createTheme,
+  CssBaseline,
+  Box,
+  CircularProgress,
+  alpha
 } from '@mui/material';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, or } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import Navbar from './components/Navbar';
 import CategoryManager from './components/CategoryManager';
@@ -23,8 +23,13 @@ function App() {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [darkMode, setDarkMode] = useState(() => {
-    const savedMode = localStorage.getItem('darkMode');
-    return savedMode ? JSON.parse(savedMode) : false;
+    try {
+      const savedMode = localStorage.getItem('darkMode');
+      return savedMode ? JSON.parse(savedMode) : false;
+    } catch (error) {
+      console.warn('Failed to parse dark mode preference:', error);
+      return false;
+    }
   });
 
   // Theme setup with more modern colors and shadows
@@ -91,23 +96,47 @@ function App() {
   useEffect(() => {
     if (!auth.currentUser) return;
 
-    // Create a query for categories
-    const q = query(
-      collection(db, 'categories'),
-      where('createdBy', '==', auth.currentUser.uid)
-    );
+    const categoriesRef = collection(db, 'categories');
+    const qOwned = query(categoriesRef, where('createdBy', '==', auth.currentUser.uid));
+    const qShared = query(categoriesRef, where('sharedWith', 'array-contains', auth.currentUser.email));
 
-    // Set up real-time listener
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const categoriesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setCategories(categoriesData);
+    const ownedCats = new Map();
+    const sharedCats = new Map();
+
+    const updateCategories = () => {
+      const allCats = [...ownedCats.values(), ...sharedCats.values()];
+      // Remove duplicates by id
+      const uniqueCats = Array.from(new Map(allCats.map(c => [c.id, c])).values());
+      setCategories(uniqueCats);
+    };
+
+    const unsubOwned = onSnapshot(qOwned, (snapshot) => {
+      snapshot.docChanges().forEach(change => {
+        if (change.type === 'removed') {
+          ownedCats.delete(change.doc.id);
+        } else {
+          ownedCats.set(change.doc.id, { id: change.doc.id, ...change.doc.data() });
+        }
+      });
+      updateCategories();
+    });
+
+    const unsubShared = onSnapshot(qShared, (snapshot) => {
+      snapshot.docChanges().forEach(change => {
+        if (change.type === 'removed') {
+          sharedCats.delete(change.doc.id);
+        } else {
+          sharedCats.set(change.doc.id, { id: change.doc.id, ...change.doc.data() });
+        }
+      });
+      updateCategories();
     });
 
     // Cleanup subscription
-    return () => unsubscribe();
+    return () => {
+      unsubOwned();
+      unsubShared();
+    };
   }, []);
 
   const handleCategorySelect = (category) => {
@@ -131,11 +160,11 @@ function App() {
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <Box 
-          sx={{ 
-            height: '100vh', 
-            display: 'flex', 
-            alignItems: 'center', 
+        <Box
+          sx={{
+            height: '100vh',
+            display: 'flex',
+            alignItems: 'center',
             justifyContent: 'center',
             bgcolor: 'background.default'
           }}
@@ -158,24 +187,24 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box 
-        sx={{ 
-          height: '100vh', 
-          display: 'flex', 
+      <Box
+        sx={{
+          height: '100vh',
+          display: 'flex',
           flexDirection: 'column',
           bgcolor: 'background.default',
         }}
       >
-        <Navbar 
-          user={user} 
+        <Navbar
+          user={user}
           darkMode={darkMode}
           onThemeToggle={toggleTheme}
           onSearchResult={handleSearchResult}
         />
-        
-        <Box 
-          sx={{ 
-            flex: 1, 
+
+        <Box
+          sx={{
+            flex: 1,
             display: 'flex',
             overflow: 'hidden',
             gap: 2,
@@ -196,8 +225,8 @@ function App() {
             <CategoryManager onCategorySelect={handleCategorySelect} />
           </Box>
 
-          <Box 
-            sx={{ 
+          <Box
+            sx={{
               flex: 1,
               borderRadius: 2,
               overflow: 'hidden',
@@ -211,11 +240,11 @@ function App() {
                 userId={user.uid}
               />
             ) : (
-              <Box 
-                sx={{ 
+              <Box
+                sx={{
                   height: '100%',
-                  display: 'flex', 
-                  alignItems: 'center', 
+                  display: 'flex',
+                  alignItems: 'center',
                   justifyContent: 'center',
                   flexDirection: 'column',
                   gap: 2,

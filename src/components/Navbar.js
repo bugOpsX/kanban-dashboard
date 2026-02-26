@@ -86,7 +86,9 @@ const SearchResultItem = styled(MenuItem)(({ theme }) => ({
   padding: theme.spacing(1, 2),
 }));
 
-const Navbar = ({ user, tasks = [], categories = [], onTaskSelect, onCategorySelect, onThemeToggle, onSearchResult }) => {
+const emptyArray = [];
+
+const Navbar = ({ user, tasks = emptyArray, categories = emptyArray, onTaskSelect, onCategorySelect, onThemeToggle, onSearchResult }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -103,28 +105,28 @@ const Navbar = ({ user, tasks = [], categories = [], onTaskSelect, onCategorySel
     const searchTermLower = term.toLowerCase();
 
     // Search in tasks
-    const matchedTasks = Array.isArray(tasks) 
+    const matchedTasks = Array.isArray(tasks)
       ? tasks.filter(task => {
-          const titleMatch = task?.title?.toLowerCase().includes(searchTermLower);
-          const descMatch = task?.description?.toLowerCase().includes(searchTermLower);
-          const tagMatch = task?.tags?.some(tag => tag.toLowerCase().includes(searchTermLower));
-          const priorityMatch = task?.priority?.toLowerCase().includes(searchTermLower);
-          return titleMatch || descMatch || tagMatch || priorityMatch;
-        }).map(task => ({
-          ...task,
-          type: 'task',
-          category: categories.find(c => c.id === task.categoryId)?.name || 'Unknown'
-        }))
+        const titleMatch = task?.title?.toLowerCase().includes(searchTermLower);
+        const descMatch = task?.description?.toLowerCase().includes(searchTermLower);
+        const tagMatch = task?.tags?.some(tag => tag.toLowerCase().includes(searchTermLower));
+        const priorityMatch = task?.priority?.toLowerCase().includes(searchTermLower);
+        return titleMatch || descMatch || tagMatch || priorityMatch;
+      }).map(task => ({
+        ...task,
+        type: 'task',
+        category: categories.find(c => c.id === task.categoryId)?.name || 'Unknown'
+      }))
       : [];
 
     // Search in categories
     const matchedCategories = Array.isArray(categories)
       ? categories.filter(category =>
-          category?.name?.toLowerCase().includes(searchTermLower)
-        ).map(category => ({
-          ...category,
-          type: 'category'
-        }))
+        category?.name?.toLowerCase().includes(searchTermLower)
+      ).map(category => ({
+        ...category,
+        type: 'category'
+      }))
       : [];
 
     setSearchResults([...matchedTasks, ...matchedCategories]);
@@ -147,8 +149,8 @@ const Navbar = ({ user, tasks = [], categories = [], onTaskSelect, onCategorySel
   };
 
   const renderSearchResult = (result) => (
-    <SearchResultItem 
-      key={result.id} 
+    <SearchResultItem
+      key={result.id}
       onClick={() => handleSearchClick(result)}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
@@ -164,24 +166,24 @@ const Navbar = ({ user, tasks = [], categories = [], onTaskSelect, onCategorySel
           </Typography>
         </Box>
         {result.type === 'task' && result.priority && (
-          <Chip 
-            label={result.priority} 
+          <Chip
+            label={result.priority}
             size="small"
             color={
-              result.priority === 'High' || result.priority === 'Urgent' 
-                ? 'error' 
-                : result.priority === 'Medium' 
-                  ? 'warning' 
+              result.priority === 'High' || result.priority === 'Urgent'
+                ? 'error'
+                : result.priority === 'Medium'
+                  ? 'warning'
                   : 'default'
             }
           />
         )}
       </Box>
       {result.type === 'task' && result.description && (
-        <Typography 
-          variant="body2" 
+        <Typography
+          variant="body2"
           color="text.secondary"
-          sx={{ 
+          sx={{
             width: '100%',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -205,14 +207,14 @@ const Navbar = ({ user, tasks = [], categories = [], onTaskSelect, onCategorySel
         </Box>
 
         {/* Center section */}
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'center',
           flex: 1,
-          maxWidth: '600px' 
+          maxWidth: '600px'
         }}>
           {user && (
-            <SearchBar 
+            <SearchBar
               onSelectResult={(result) => {
                 if (result.type === 'category') {
                   // Handle category selection
@@ -221,15 +223,15 @@ const Navbar = ({ user, tasks = [], categories = [], onTaskSelect, onCategorySel
                   // Handle task selection
                   onSearchResult({ type: 'task', data: result });
                 }
-              }} 
+              }}
             />
           )}
         </Box>
 
         {/* Right section */}
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
           gap: 1,
           width: '200px',
           justifyContent: 'flex-end'
@@ -269,8 +271,8 @@ const Navbar = ({ user, tasks = [], categories = [], onTaskSelect, onCategorySel
               </Menu>
             </>
           ) : (
-            <Button 
-              color="inherit" 
+            <Button
+              color="inherit"
               onClick={async () => {
                 try {
                   const provider = new GoogleAuthProvider();
